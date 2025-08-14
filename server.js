@@ -36,6 +36,7 @@ const allowedOrigins = [
   'https://localhost:5173',
   'https://192.168.0.103:5173',
   'https://192.168.0.103',
+  'https://attendance-system-frontend-pudqik4ft-firekeepers-projects.vercel.app',
   process.env.CLIENT_ORIGIN
 ];
 
