@@ -25,4 +25,18 @@ export default {
         },
         useNullAsDefault: true, //To handle default values correctly, especially for booleans
     },
+
+    production: {
+        client: "pg",
+        connection: {
+            connectionString: process.env.DATABASE_URL,
+            ssl: { rejectUnauthorized: false}
+        },
+        migrations: {
+            directory: "./db/migrations"
+        },
+        seeds: {
+            directory: "./db/seeds"
+        }
+    }
 }
