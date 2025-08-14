@@ -104,6 +104,8 @@ app.get("/", (req, res) => {
     res.send('Welcome to the Attendance System API!');
 })
 
+console.log('SERVER STARTUP - Allowed Origins:', allowedOrigins);
+
 httpsServer.listen(PORT, "0.0.0.0", () => {
     console.log(`HTTPS Server running on port ${PORT}`)
     console.log(`Websocket server also running on port ${PORT}`)
