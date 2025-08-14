@@ -2,7 +2,8 @@ import "dotenv/config"
 import express from "express"
 import cors from "cors"
 import { Server } from "socket.io"
-import { createServer } from "https"
+import { createServer as createHttpServer } from "http"
+import { createServer as createHttpsServer } from "https"
 import fs from "fs"
 import cron from 'node-cron';
 
@@ -26,10 +27,6 @@ const app = express()
 //Middleware
 app.use(express.json())
 
-const httpsOptions = {
-    key: fs.readFileSync('./localhost+1-key.pem'),
-    cert: fs.readFileSync('./localhost+1.pem'),
-};
 
 const allowedOrigins = [
   'http://localhost:5173',
@@ -54,35 +51,47 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-const httpsServer = createServer(httpsOptions, app);
+
+let server;
+if (process.env.NODE_ENV === 'production') {
+  // In production (on Render), create a standard HTTP server.
+  // Render's load balancer handles HTTPS.
+  server = createHttpServer(app);
+  console.log('Running in production mode: creating HTTP server.');
+} else {
+  // In development, create an HTTPS server using your local certs.
+  const httpsOptions = {
+    key: fs.readFileSync('./localhost+1-key.pem'),
+    cert: fs.readFileSync('./localhost+1.pem'),
+  };
+  server = createHttpsServer(httpsOptions, app);
+  console.log('Running in development mode: creating HTTPS server.');
+}
 
 
-const io = new Server(httpsServer, {
+
+const io = new Server(server, {
     cors: corsOptions
-})
+});
 
 // Socket.IO connection handling
 io.on("connection", (socket) => {
-    console.log(`User connected: ${socket.id}`);
-
-    // Example: A lecturer joining a specific section's room
-    // The frontend would emit an event like 'join_section' with section_id
-    socket.on("join_section", (sectionId) => {
-        socket.join(`section_${sectionId}`);
-        console.log(`User ${socket.id} joined section room: section_${sectionId}`);
-    });
-
-    socket.on("disconnect", () => {
-        console.log(`User disconnected: ${socket.id}`);
-    });
+  console.log(`User connected: ${socket.id}`);
+  socket.on("join_section", (sectionId) => {
+    socket.join(`section_${sectionId}`);
+    console.log(`User ${socket.id} joined section room: section_${sectionId}`);
+  });
+  socket.on("disconnect", () => {
+    console.log(`User disconnected: ${socket.id}`);
+  });
 });
 
 cron.schedule('0 2 * * *', () => {
-  console.log('Triggering the scheduled daily attendance check...');
-  attendanceChecker.runDailyCheck();
+    console.log('Triggering the scheduled daily attendance check...');
+    attendanceChecker.runDailyCheck();
 }, {
-  scheduled: true,
-  timezone: "Asia/Kuala_Lumpur" // Set to your timezone
+    scheduled: true,
+    timezone: "Asia/Kuala_Lumpur"
 });
 
 
@@ -106,7 +115,8 @@ app.get("/", (req, res) => {
 
 console.log('SERVER STARTUP - Allowed Origins:', allowedOrigins);
 
-httpsServer.listen(PORT, "0.0.0.0", () => {
-    console.log(`HTTPS Server running on port ${PORT}`)
-    console.log(`Websocket server also running on port ${PORT}`)
-})
+server.listen(PORT, "0.0.0.0", () => {
+  const protocol = process.env.NODE_ENV === 'production' ? 'HTTP' : 'HTTPS';
+  console.log(`${protocol} Server running on port ${PORT}`);
+  console.log(`Websocket server also running on port ${PORT}`);
+});
